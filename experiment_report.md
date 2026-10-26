@@ -298,6 +298,41 @@ if bg_mid:
         self.canvas.create_image(x + ox, oy, image=bg_mid, anchor=tk.NW)
 ```
 
+### 7.3 Point-to-Line-Segment Perpendicular Collision (Laser Dodging)
+```python
+def point_to_segment_dist(px, py, x1, y1, x2, y2):
+    """Calculates true perpendicular distance from point to line segment."""
+    dx = x2 - x1
+    dy = y2 - y1
+    seg_len_sq = dx * dx + dy * dy
+    if seg_len_sq == 0:
+        return math.hypot(px - x1, py - y1)
+    # Scalar projection parameter clamped to [0.0, 1.0]
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / seg_len_sq))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+```
+
+### 7.4 Right-Click Combat & Web-Strike Vector System
+```python
+# Within melee range (dist <= 95): execute punch/kick combo and stun
+if dist <= 95:
+    self.player.pose = random.choice(["punch", "kick"])
+    best_target.stun()
+    best_target.x += 35 * self.player.facing
+    self.score += SCORE_STOMP * self.combo
+
+# Distant enemy (95 < dist <= 280): execute Web-Strike Zip Attack
+elif 95 < dist <= 280:
+    self.player.pose = "kick"
+    self.player.x = best_target.x - (28 * self.player.facing)
+    self.player.y = best_target.y
+    best_target.stun()
+    best_target.x += 40 * self.player.facing
+    self.score += (SCORE_STOMP + SCORE_STUN) * self.combo
+```
+
 ---
 
 ## 8. VIVA-VOCE / PROJECT PRESENTATION Q&A
@@ -312,10 +347,13 @@ if bg_mid:
 *Answer:* Every state transition explicitly calls `root.after_cancel(self.loop_id)` to cancel pending frame executions before starting a new state. Furthermore, particles are strictly capped at 80 items and off-screen objects are culled beyond 260 px.
 
 **Q4: How does the pendulum web-swinging physics work mathematically?**  
-*Answer:* When attached, the player's Cartesian position $(x, y)$ is converted to polar angle $\theta$ and length $L$. Each frame, angular acceleration $\alpha = -\frac{g}{L} \sin(\theta)$ is added to angular velocity with slight damping. Upon release, angular momentum is converted into linear launch velocity using $v_x = L \omega \cos(\theta)$ and $v_y = -|L \omega \sin(\theta)|$.
+*Answer:* When attached, the player's Cartesian position $(x, y)$ is converted to polar angle $\theta$ and length $L$. Each frame, angular acceleration $\alpha = -\frac{g}{L} \sin(\theta)$ is added to angular velocity with slight damping. Upon release, angular momentum is converted into linear launch velocity using $v_x = L \omega \cos(\theta) \cdot 1.35$ and $v_y = -|L \omega \sin(\theta)| \cdot 1.35 - 4.8$.
 
 **Q5: How does the Spider-Sense telegraph system work?**  
 *Answer:* The engine scans for impending threats in advance (e.g., drone laser lock timer $> 12$ ticks, falling bomb distance $< 120$ px, or thug attack charge $< 70$ px). When detected, it draws pulsing red warning rings around Spider-Man and screen-edge directional arrows, giving the player a split-second window to dodge before damage occurs.
+
+**Q6: How is laser collision calculated fairly without unfair hitboxes?**  
+*Answer:* The engine computes the scalar projection of Spider-Man's coordinates onto the drone's laser line segment $(x_1, y_1) \to (x_2, y_2)$ using vector dot product clamped to $[0, 1]$. Damage only applies if the perpendicular distance to the line is under 18 pixels, allowing players to jump over or dive beneath the beam.
 
 ---
 
@@ -325,4 +363,4 @@ The project **"WEBLINE: Night Patrol"** was successfully developed, tested, and 
 - Runs standalone on any standard Python 3 installation using only built-in modules.
 - Employs an authentic 2D comic-book visual design with slanted HUD panels, halftone textures, and floating onomatopoeic popups.
 - Demonstrates advanced object-oriented design, discrete event simulation, trigonometric vector rendering, and procedural generation.
-- Delivers responsive controls with dynamic web-swinging from anywhere, height pumping, unlimited web fluid, and automated fall safety.
+- Features dynamic combat with melee combos and web-strikes, authentic pendulum swinging with physical rooftop poles and cranes, telegraphed laser dodging, medkit health recovery, unlimited fluid, and automated fall safety.

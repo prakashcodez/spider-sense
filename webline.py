@@ -134,6 +134,19 @@ def draw_halftone_accent(canvas, x, y, w, h, step=7, dot_r=1.2, color=COLOR_DARK
             canvas.create_oval(dx - dot_r, dy - dot_r, dx + dot_r, dy + dot_r, fill=color, outline="")
 
 
+def point_to_segment_dist(px, py, x1, y1, x2, y2):
+    """Calculates perpendicular distance from point (px, py) to line segment (x1, y1)-(x2, y2)."""
+    dx = x2 - x1
+    dy = y2 - y1
+    seg_len_sq = dx * dx + dy * dy
+    if seg_len_sq == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / seg_len_sq))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. SPIDER-MAN HERO VECTOR RENDERER (NO SPRITE IMAGES)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -144,7 +157,7 @@ def draw_hero(canvas, cx, cy, pose, facing, tick, invincible, swing_angle=0.0):
     - Red head with black web pattern & white angular eye lenses with black borders
     - Red torso and biceps, electric-blue sides and legs, black chest emblem
     - White web-shooter wrist bands
-    - Directional mirroring and full pose state articulation
+    - Directional mirroring and full pose state articulation (run, jump, swing, punch, kick)
     """
     # Flash on alternate frames if invincible
     if invincible > 0 and (invincible // 3) % 2 == 1:
@@ -200,7 +213,7 @@ def draw_hero(canvas, cx, cy, pose, facing, tick, invincible, swing_angle=0.0):
                               fill=COLOR_WHITE, outline=COLOR_BLACK, width=1.5)
         return
 
-    # --- GROUND & AIR POSES (run, jump, fall, idle, shot, hurt, crouch) ---
+    # --- GROUND, AIR & COMBAT POSES (run, jump, fall, idle, shot, punch, kick, crouch) ---
     
     # 1. Legs Animation
     if pose == "run":
@@ -223,6 +236,23 @@ def draw_hero(canvas, cx, cy, pose, facing, tick, invincible, swing_angle=0.0):
         canvas.create_line(px(4), py(8), px(11), py(19), px(5), py(27),
                            fill=COLOR_BLUE, width=5, capstyle=tk.ROUND)
         canvas.create_line(px(5), py(27), px(8), py(29), fill=COLOR_RED, width=5)
+    elif pose == "punch":
+        # Lunging combat stance legs
+        canvas.create_line(px(-6), py(8), px(-14), py(22), px(-18), py(33),
+                           fill=COLOR_BLUE, width=5, capstyle=tk.ROUND)
+        canvas.create_line(px(-18), py(31), px(-14), py(34), fill=COLOR_RED, width=5)
+        canvas.create_line(px(4), py(8), px(12), py(20), px(16), py(33),
+                           fill=COLOR_BLUE, width=5, capstyle=tk.ROUND)
+        canvas.create_line(px(16), py(31), px(20), py(34), fill=COLOR_RED, width=5)
+    elif pose == "kick":
+        # Flying martial arts kick legs
+        canvas.create_line(px(-4), py(8), px(-10), py(18), px(-8), py(30),
+                           fill=COLOR_BLUE, width=5, capstyle=tk.ROUND)
+        canvas.create_line(px(-8), py(28), px(-5), py(32), fill=COLOR_RED, width=5)
+        canvas.create_line(px(4), py(6), px(18), py(0), px(30), py(-4),
+                           fill=COLOR_BLUE, width=6, capstyle=tk.ROUND)
+        canvas.create_polygon([px(28), py(-8), px(38), py(-4), px(30), py(1)],
+                              fill=COLOR_RED, outline=COLOR_BLACK, width=1.5)
     elif pose == "crouch":
         canvas.create_line(px(-4), py(6), px(-12), py(16), px(-4), py(24), fill=COLOR_BLUE, width=5)
         canvas.create_line(px(4), py(6), px(10), py(17), px(6), py(24), fill=COLOR_BLUE, width=5)
@@ -259,6 +289,22 @@ def draw_hero(canvas, cx, cy, pose, facing, tick, invincible, swing_angle=0.0):
                            fill=COLOR_RED, width=4, capstyle=tk.ROUND)
         canvas.create_rectangle(px(22) - 2, torso_y - 6, px(22) + 2, torso_y, fill=COLOR_WHITE, outline=COLOR_BLACK)
         canvas.create_oval(px(27) - 3, torso_y - 6, px(27) + 3, torso_y, fill=COLOR_LIGHT_BLUE, outline="")
+    elif pose == "punch":
+        # Rear arm braced for balance
+        canvas.create_line(px(-5), torso_y - 4, px(-15), torso_y + 2, px(-13), torso_y + 10,
+                           fill=COLOR_RED, width=4, capstyle=tk.ROUND)
+        # Power punch forward arm with clenched fist
+        canvas.create_line(px(2), torso_y - 4, px(16), torso_y - 4, px(27), torso_y - 4,
+                           fill=COLOR_RED, width=5, capstyle=tk.ROUND)
+        canvas.create_oval(px(25), torso_y - 7, px(33), torso_y + 1, fill=COLOR_RED, outline=COLOR_BLACK, width=1.5)
+        # Comic punch action lines
+        canvas.create_line(px(32), torso_y - 8, px(38), torso_y - 12, fill=COLOR_YELLOW, width=1.5)
+        canvas.create_line(px(35), torso_y - 4, px(42), torso_y - 4, fill=COLOR_YELLOW, width=2)
+        canvas.create_line(px(32), torso_y, px(38), torso_y + 4, fill=COLOR_YELLOW, width=1.5)
+    elif pose == "kick":
+        # Aerial kick braced arms
+        canvas.create_line(px(-4), torso_y - 6, px(-14), torso_y - 14, fill=COLOR_RED, width=4)
+        canvas.create_line(px(4), torso_y - 4, px(14), torso_y + 8, fill=COLOR_RED, width=4)
     elif pose == "run":
         arm_swing = math.sin(tick * 0.35) * 10
         canvas.create_line(px(-4), torso_y - 6, px(-8 + arm_swing), torso_y + 4, px(-12 + arm_swing), torso_y + 10,
@@ -412,35 +458,101 @@ class Rooftop:
 
 
 class AnchorPoint:
-    """A web-slinging anchor mounted on lamp posts, cranes, billboards or overhead skyline."""
+    """A web-slinging anchor mounted on physical rooftop poles, cranes, towers and spires."""
 
-    def __init__(self, x, y, kind="crane"):
+    def __init__(self, x, y, kind="crane", base_y=None):
         self.x = x
         self.y = y
         self.kind = kind
+        self.base_y = base_y if base_y is not None else y + 140
 
     def draw(self, canvas, cam_x, is_target=False):
         sx = self.x - cam_x
         if sx < -VIEW_CULL_MARGIN or sx > CANVAS_WIDTH + VIEW_CULL_MARGIN:
             return
 
+        by = self.base_y
+
         if self.kind == "lamp":
-            canvas.create_line(sx, self.y, sx, self.y + 55, fill=COLOR_BLACK, width=4)
-            canvas.create_line(sx, self.y, sx - 10, self.y + 10, fill=COLOR_BLUE, width=3)
+            # Rooftop concrete mounting plate
+            canvas.create_rectangle(sx - 6, by - 4, sx + 6, by, fill=COLOR_DARK_GRAY, outline=COLOR_BLACK, width=1.5)
+            # Main black steel streetlight pole grounded directly onto rooftop
+            canvas.create_line(sx, by, sx, self.y + 12, fill=COLOR_BLACK, width=4)
+            canvas.create_line(sx - 1, by, sx - 1, self.y + 12, fill=COLOR_BLUE, width=1.5)
+            # Curved lamp arm & lantern fixture
+            canvas.create_line(sx, self.y + 12, sx - 14, self.y + 6, sx - 18, self.y + 16, fill=COLOR_BLACK, width=3)
+            canvas.create_oval(sx - 22, self.y + 12, sx - 14, self.y + 20, fill=COLOR_YELLOW, outline=COLOR_BLACK, width=1.5)
+            # Glow cone
+            canvas.create_polygon([sx - 20, self.y + 20, sx - 32, self.y + 55, sx - 8, self.y + 55],
+                                  fill="", outline=COLOR_YELLOW, dash=(2, 4))
+
         elif self.kind == "crane":
-            canvas.create_line(sx - 20, self.y + 30, sx, self.y, fill=COLOR_RED, width=3)
-            canvas.create_line(sx + 20, self.y + 30, sx, self.y, fill=COLOR_RED, width=3)
-            canvas.create_line(sx - 15, self.y + 20, sx + 15, self.y + 20, fill=COLOR_BLACK, width=2)
+            # Construction derrick lattice tower rooted on rooftop
+            canvas.create_line(sx - 12, by, sx - 12, self.y + 16, fill=COLOR_RED, width=3)
+            canvas.create_line(sx + 12, by, sx + 12, self.y + 16, fill=COLOR_RED, width=3)
+            # Lattice struts
+            step_stride = 24
+            for sy in range(int(self.y + 20), int(by), step_stride):
+                canvas.create_line(sx - 12, sy, sx + 12, sy, fill=COLOR_BLACK, width=1.5)
+                canvas.create_line(sx - 12, sy, sx + 12, sy - step_stride, fill=COLOR_YELLOW, width=1.5)
+            # Horizontal boom arm
+            canvas.create_line(sx - 24, self.y + 10, sx + 34, self.y + 10, fill=COLOR_RED, width=4)
+            canvas.create_line(sx, self.y - 10, sx - 24, self.y + 10, fill=COLOR_BLACK, width=1.5)
+            canvas.create_line(sx, self.y - 10, sx + 34, self.y + 10, fill=COLOR_BLACK, width=1.5)
+            # Pulley hoist cable to anchor ring
+            canvas.create_line(sx + 20, self.y + 10, sx + 20, self.y, fill=COLOR_WHITE, width=2)
+            # Beacon light
+            canvas.create_oval(sx - 3, self.y - 12, sx + 3, self.y - 6, fill=COLOR_YELLOW, outline="")
+
+        elif self.kind == "antenna":
+            # Radio mast lattice grounded on rooftop
+            canvas.create_rectangle(sx - 8, by - 4, sx + 8, by, fill=COLOR_DARK_GRAY, outline=COLOR_BLACK)
+            canvas.create_line(sx, by, sx, self.y, fill=COLOR_BLACK, width=3)
+            canvas.create_line(sx - 18, by, sx, self.y + 40, fill=COLOR_BLUE, width=1.5)
+            canvas.create_line(sx + 18, by, sx, self.y + 40, fill=COLOR_BLUE, width=1.5)
+            # Cross dipole bars
+            for dy in [20, 48, 76]:
+                canvas.create_line(sx - 14, self.y + dy, sx + 14, self.y + dy, fill=COLOR_LIGHT_BLUE, width=2)
+            # Red warning aviation beacon
+            canvas.create_oval(sx - 4, self.y - 7, sx + 4, self.y + 1, fill=COLOR_RED, outline="")
+
+        elif self.kind == "water_tower":
+            # NYC rooftop timber tank on steel stilts
+            canvas.create_line(sx - 20, by, sx - 14, self.y + 48, fill="#334155", width=3)
+            canvas.create_line(sx + 20, by, sx + 14, self.y + 48, fill="#334155", width=3)
+            canvas.create_line(sx - 14, by, sx + 14, by, fill=COLOR_BLACK, width=2)
+            # Tank body
+            canvas.create_rectangle(sx - 22, self.y + 14, sx + 22, self.y + 48,
+                                    fill="#0F172A", outline=COLOR_RED, width=2)
+            canvas.create_line(sx - 22, self.y + 26, sx + 22, self.y + 26, fill=COLOR_BLACK, width=2)
+            canvas.create_line(sx - 22, self.y + 38, sx + 22, self.y + 38, fill=COLOR_BLACK, width=2)
+            # Conical roof & lightning rod
+            canvas.create_polygon([sx - 24, self.y + 14, sx, self.y + 2, sx + 24, self.y + 14],
+                                  fill="#1E293B", outline=COLOR_BLACK, width=2)
+            canvas.create_line(sx, self.y + 2, sx, self.y, fill=COLOR_WHITE, width=2)
+
+        elif self.kind == "spire":
+            # Neoclassical Art Deco spire pinnacle
+            canvas.create_rectangle(sx - 18, by - 8, sx + 18, by, fill=COLOR_DARK_GRAY, outline=COLOR_BLACK, width=2)
+            canvas.create_polygon([sx - 10, by - 8, sx, self.y, sx + 10, by - 8],
+                                  fill=COLOR_BLUE, outline=COLOR_BLACK, width=2)
+            canvas.create_line(sx, by - 8, sx, self.y, fill=COLOR_WHITE, width=1.5)
+
         elif self.kind == "billboard":
-            canvas.create_rectangle(sx - 18, self.y - 12, sx + 18, self.y + 6,
+            canvas.create_line(sx - 16, by, sx - 16, self.y + 6, fill=COLOR_BLACK, width=3)
+            canvas.create_line(sx + 16, by, sx + 16, self.y + 6, fill=COLOR_BLACK, width=3)
+            canvas.create_rectangle(sx - 22, self.y - 12, sx + 22, self.y + 6,
                                     fill=COLOR_BLUE, outline=COLOR_BLACK, width=2)
 
-        # Glowing Anchor ring
+        # Glowing Anchor ring on top
         ring_color = COLOR_YELLOW if is_target else COLOR_LIGHT_BLUE
-        r = 8 if is_target else 6
+        r = 9 if is_target else 6
         canvas.create_oval(sx - r, self.y - r, sx + r, self.y + r,
                            fill=COLOR_NAVY, outline=ring_color, width=3)
         canvas.create_oval(sx - 2, self.y - 2, sx + 2, self.y + 2, fill=COLOR_WHITE, outline="")
+        if is_target:
+            # Active target beacon pulse
+            canvas.create_oval(sx - 14, self.y - 14, sx + 14, self.y + 14, outline=COLOR_YELLOW, width=1.5)
 
 
 class FluidCartridge:
@@ -459,6 +571,7 @@ class FluidCartridge:
         if sx < -VIEW_CULL_MARGIN or sx > CANVAS_WIDTH + VIEW_CULL_MARGIN:
             return
 
+        self.anim_t += 0.08
         bob = math.sin(self.anim_t) * 4
         sy = self.y + bob
 
@@ -472,6 +585,39 @@ class FluidCartridge:
             canvas.create_rectangle(sx - 4, sy - 18, sx + 4, sy - 14,
                                     fill=COLOR_RED, outline=COLOR_BLACK, width=1.5)
             canvas.create_line(sx - 5, sy - 12, sx - 5, sy + 8, fill=COLOR_WHITE, width=2)
+
+
+class MedkitPickup:
+    """Medical first-aid crate on rooftops restoring +2 hearts on touch."""
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.collected = False
+        self.anim_t = random.uniform(0, math.pi * 2)
+
+    def draw(self, canvas, cam_x, icon_img=None):
+        if self.collected:
+            return
+        sx = self.x - cam_x
+        if sx < -VIEW_CULL_MARGIN or sx > CANVAS_WIDTH + VIEW_CULL_MARGIN:
+            return
+
+        self.anim_t += 0.08
+        bob = math.sin(self.anim_t) * 3
+        sy = self.y + bob
+
+        if icon_img is not None:
+            canvas.create_image(sx, sy, image=icon_img, anchor=tk.CENTER)
+        else:
+            # Glowing green medical pulse aura
+            canvas.create_oval(sx - 18, sy - 18, sx + 18, sy + 18, fill="", outline="#4ADE80", width=1.5)
+            # White emergency first-aid crate
+            canvas.create_rectangle(sx - 12, sy - 9, sx + 12, sy + 9, fill=COLOR_WHITE, outline=COLOR_BLACK, width=2)
+            canvas.create_line(sx - 4, sy - 11, sx + 4, sy - 11, fill=COLOR_BLACK, width=2)
+            # Bold Red Cross
+            canvas.create_rectangle(sx - 7, sy - 2.5, sx + 7, sy + 2.5, fill=COLOR_RED, outline="")
+            canvas.create_rectangle(sx - 2.5, sy - 7, sx + 2.5, sy + 7, fill=COLOR_RED, outline="")
 
 
 class MissionItem:
@@ -673,14 +819,20 @@ class SentryDrone(Enemy):
             self.laser_firing = False
             return
 
-        if dist < 420:
-            self.target_px = player.x
-            self.target_py = player.y
+        if dist < 440:
             self.lock_timer += 1
-            if self.lock_timer >= 32:
+            # Track player until tick 36; then freeze aim position so player can dodge!
+            if self.lock_timer < 36:
+                self.target_px = player.x
+                self.target_py = player.y
+
+            # Fire laser beam from tick 50 to 54
+            if self.lock_timer >= 50:
                 self.laser_firing = True
-                self.cooldown = 45
-                self.lock_timer = 0
+                if self.lock_timer >= 54:
+                    self.cooldown = 60
+                    self.lock_timer = 0
+                    self.laser_firing = False
         else:
             self.lock_timer = max(0, self.lock_timer - 1)
             self.laser_firing = False
@@ -692,16 +844,27 @@ class SentryDrone(Enemy):
         if sx < -VIEW_CULL_MARGIN or sx > CANVAS_WIDTH + VIEW_CULL_MARGIN:
             return
 
-        if self.lock_timer > 0 and not self.is_stunned():
+        # Telegraph laser beam
+        if self.lock_timer > 0 and not self.is_stunned() and not self.laser_firing:
             t_sx = self.target_px - cam_x
-            beam_color = COLOR_YELLOW if (tick // 2) % 2 == 0 else COLOR_RED
-            canvas.create_line(sx, self.y, t_sx, self.target_py,
-                               fill=beam_color, width=1.5, dash=(4, 4))
+            if self.lock_timer >= 36:
+                # Target aim is locked: solid warning line with blinking reticle
+                beam_color = COLOR_RED if (tick // 2) % 2 == 0 else COLOR_YELLOW
+                canvas.create_line(sx, self.y, t_sx, self.target_py, fill=beam_color, width=2)
+                canvas.create_oval(t_sx - 8, self.target_py - 8, t_sx + 8, self.target_py + 8,
+                                   outline=COLOR_RED, width=2)
+            else:
+                # Tracking player: dotted line
+                beam_color = COLOR_YELLOW if (tick // 2) % 2 == 0 else COLOR_LIGHT_BLUE
+                canvas.create_line(sx, self.y, t_sx, self.target_py,
+                                   fill=beam_color, width=1.5, dash=(4, 4))
 
         if self.laser_firing:
             t_sx = self.target_px - cam_x
-            canvas.create_line(sx, self.y, t_sx, self.target_py, fill=COLOR_RED, width=4)
+            canvas.create_line(sx, self.y, t_sx, self.target_py, fill=COLOR_RED, width=5)
             canvas.create_line(sx, self.y, t_sx, self.target_py, fill=COLOR_WHITE, width=2)
+            canvas.create_oval(t_sx - 10, self.target_py - 10, t_sx + 10, self.target_py + 10,
+                               fill=COLOR_YELLOW, outline=COLOR_RED, width=2)
 
         canvas.create_polygon([
             sx - 18, self.y - 6,
@@ -867,6 +1030,10 @@ class Player:
         self.crouch_hold = False
         self.interact_item = None
 
+        # Combat Attack State
+        self.attack_timer = 0
+        self.attack_type = "punch"
+
     def take_damage(self, amount=1):
         """Reduces hearts ONLY when hit by enemies."""
         if self.invincible <= 0:
@@ -887,8 +1054,8 @@ class Player:
 
     def attach_swing(self, anchors):
         """
-        Attaches web to the nearest anchor OR dynamically casts web to the sky/skyscrapers overhead.
-        Allows swinging from literally anywhere on the map!
+        Attaches web to the nearest physical rooftop pole or crane ahead.
+        Falls back to overhead skyline if no physical pole is in range.
         """
         if self.is_swinging:
             return False
@@ -899,25 +1066,26 @@ class Player:
             dx = a.x - self.x
             dy = a.y - self.y
             dist = math.hypot(dx, dy)
-            if dist <= SWING_ATTACH_RADIUS and dy < 25 and (dx * self.facing >= -60):
+            # Find poles ahead or directly overhead
+            if dist <= SWING_ATTACH_RADIUS and dy < 25 and (dx * self.facing >= -75):
                 if dist < best_dist:
                     best_dist = dist
                     best = a
 
-        # If no preset anchor is nearby, shoot web up to the overhead skyline!
+        # If no physical pole is in range, shoot web up to the overhead skyscraper skyline!
         if not best:
-            sky_x = self.x + (150 * self.facing)
+            sky_x = self.x + (160 * self.facing)
             sky_y = max(30.0, self.y - 280.0)
-            best = AnchorPoint(sky_x, sky_y, kind="sky")
+            best = AnchorPoint(sky_x, sky_y, kind="sky", base_y=self.y)
 
         self.is_swinging = True
         self.swing_anchor = best
         dx = self.x - best.x
         dy = self.y - best.y
-        self.swing_len = max(140.0, math.hypot(dx, dy))
+        self.swing_len = max(120.0, min(400.0, math.hypot(dx, dy)))
         self.swing_angle = math.atan2(dx, dy)
         # Give initial forward swing momentum
-        init_spd = max(4.5, abs(self.vx) + 2.5) * self.facing
+        init_spd = max(5.2, abs(self.vx) + 3.0) * self.facing
         self.swing_dtheta = (init_spd * math.cos(self.swing_angle)) / self.swing_len
         self.can_double_jump = True
         return True
@@ -929,12 +1097,12 @@ class Player:
         self.is_swinging = False
         if self.swing_anchor:
             tangent_spd = self.swing_len * self.swing_dtheta * SWING_LAUNCH_BOOST
-            # Launch higher into the air
-            self.vx = tangent_spd * math.cos(self.swing_angle) * 1.25
-            self.vy = - abs(tangent_spd * math.sin(self.swing_angle)) * 1.2 - 5.0
-            # Clamp limits
-            self.vx = max(-16.0, min(16.0, self.vx))
-            self.vy = max(-15.5, min(6.0, self.vy))
+            # Launch higher and farther with authentic pendulum kinetic energy
+            self.vx = tangent_spd * math.cos(self.swing_angle) * 1.35
+            self.vy = - abs(tangent_spd * math.sin(self.swing_angle)) * 1.35 - 4.8
+            # Clamp limits to generous hero values
+            self.vx = max(-18.0, min(18.0, self.vx))
+            self.vy = max(-17.0, min(6.0, self.vy))
             self.swing_anchor = None
             self.can_double_jump = True
 
@@ -943,27 +1111,28 @@ class Player:
         if self.invincible > 0:
             self.invincible -= 1
 
-        # ── 1. DYNAMIC WEB SWINGING PHYSICS ──
+        # ── 1. DYNAMIC AUTHENTIC PENDULUM WEB SWINGING ──
         if self.is_swinging:
             if not mouse_swing_held:
                 self.release_swing()
             else:
                 self.web_fluid = MAX_FLUID  # Always full
-                accel = - (GRAVITY / self.swing_len) * math.sin(self.swing_angle)
+                # Authentic pendulum angular gravity acceleration: swoops down fast, climbs to crest
+                accel = - (1.65 / self.swing_len) * math.sin(self.swing_angle)
                 self.swing_dtheta += accel
-                self.swing_dtheta *= SWING_DAMPING
+                self.swing_dtheta *= 0.9992
 
                 # Swing height pumping: hold W or Up or Space to reel in and gain height
                 if keys.get("w") or keys.get("Up") or keys.get("space"):
-                    self.swing_len = max(110.0, self.swing_len - 3.5)
-                    self.swing_dtheta += 0.0018 * (1 if self.swing_dtheta >= 0 else -1)
+                    self.swing_len = max(85.0, self.swing_len - 4.5)
+                    self.swing_dtheta += 0.0030 * (1 if self.swing_dtheta >= 0 else -1)
 
                 # Horizontal pumping: accelerate swing
                 if keys.get("d") or keys.get("Right"):
-                    self.swing_dtheta += 0.0024
+                    self.swing_dtheta += 0.0035
                     self.facing = 1
                 elif keys.get("a") or keys.get("Left"):
-                    self.swing_dtheta -= 0.0024
+                    self.swing_dtheta -= 0.0035
                     self.facing = -1
 
                 self.swing_angle += self.swing_dtheta
@@ -992,6 +1161,11 @@ class Player:
                 self.vx = 0.0
             if self.on_ground:
                 self.pose = "idle"
+
+        # Combat Attack Pose Override
+        if self.attack_timer > 0:
+            self.attack_timer -= 1
+            self.pose = self.attack_type
 
         # Gravity
         self.vy += GRAVITY
@@ -1040,10 +1214,10 @@ class Player:
                     self.last_safe_y = self.y
                     break
 
-        if not self.on_ground:
+        if not self.on_ground and self.attack_timer <= 0:
             self.pose = "jump" if self.vy < 0 else "fall"
 
-        if self.crouch_hold:
+        if self.crouch_hold and self.attack_timer <= 0:
             self.pose = "crouch"
 
 
@@ -1055,22 +1229,24 @@ MISSIONS = [
         "id": 1,
         "title": "Rooftop Rescue",
         "length": 5200,
-        "desc": "Hostile street thugs have ambushed civilians along the skyline. Locate and free 3 trapped civilians by holding [E] near them. Watch your footing and stomp on thugs from above!",
+        "desc": "Hostile street thugs have ambushed civilians along the skyline. Locate and free 3 trapped civilians by holding [E] near them. Watch your footing, swing between streetlights, and punch or stomp thugs!",
         "target_type": "civilian",
         "target_count": 3,
-        "thugs": 8, "drones": 0, "bombers": 0, "hunter": False,
+        "thugs": 7, "drones": 0, "bombers": 0, "hunter": False,
         "cartridge_count": 14,
+        "medkit_count": 3,
         "par_time": 75,
     },
     {
         "id": 2,
         "title": "Data Heist",
         "length": 5600,
-        "desc": "Oscorp security drones are guarding encrypted data chips along the high-rise towers. Infiltrate the perimeter and retrieve all 5 chips while evading laser lock-on beams.",
+        "desc": "Oscorp security drones guard encrypted data chips along high-rise towers. Infiltrate and retrieve all 5 chips! Evade telegraphed laser beams or use Right-Click combat & Medkits.",
         "target_type": "chip",
         "target_count": 5,
-        "thugs": 5, "drones": 7, "bombers": 0, "hunter": False,
+        "thugs": 4, "drones": 4, "bombers": 0, "hunter": False,
         "cartridge_count": 14,
+        "medkit_count": 4,
         "par_time": 85,
     },
     {
@@ -1081,19 +1257,21 @@ MISSIONS = [
         "target_type": "bomb",
         "target_count": 3,
         "time_limit": 90,
-        "thugs": 6, "drones": 3, "bombers": 1, "hunter": False,
+        "thugs": 5, "drones": 3, "bombers": 1, "hunter": False,
         "cartridge_count": 15,
+        "medkit_count": 3,
         "par_time": 70,
     },
     {
         "id": 4,
         "title": "Skyline Sprint",
         "length": 6200,
-        "desc": "Sprint and web-swing across dizzying skyscraper chasms. Use your unlimited web-fluid and dynamic swing physics to soar to the extraction portal in record time!",
+        "desc": "Sprint and web-swing across dizzying skyscraper chasms. Use your unlimited web-fluid and authentic pendulum swing physics to soar to the extraction portal in record time!",
         "target_type": "gate",
         "target_count": 1,
-        "thugs": 6, "drones": 5, "bombers": 0, "hunter": False,
-        "cartridge_count": 12,
+        "thugs": 5, "drones": 4, "bombers": 0, "hunter": False,
+        "cartridge_count": 14,
+        "medkit_count": 4,
         "par_time": 95,
     },
     {
@@ -1103,8 +1281,9 @@ MISSIONS = [
         "desc": "CRITICAL EMERGENCY: An experimental Hunter Drone has locked onto your signature! Web-swing across the city to the extraction gate before the Hunter catches you. All forces active!",
         "target_type": "gate",
         "target_count": 1,
-        "thugs": 7, "drones": 6, "bombers": 1, "hunter": True,
+        "thugs": 6, "drones": 5, "bombers": 1, "hunter": True,
         "cartridge_count": 16,
+        "medkit_count": 4,
         "par_time": 90,
     }
 ]
@@ -1114,8 +1293,10 @@ def generate_level(mission_data, seed_val=100):
     """
     Procedurally generates level geometry based on mission specs.
     Guarantees:
+    - Dense physical rooftop poles, cranes, antennas, and water towers rooted directly to roofs.
+    - Health medkit pickups distributed along rooftops for heart recovery.
     - Wide, connected rooftops with natural gaps.
-    - Massive, safe final Extraction Rooftop with skyscraper barrier to prevent falling.
+    - Massive, safe final Extraction Rooftop with skyscraper barrier.
     """
     rng = random.Random(seed_val)
     length = mission_data["length"]
@@ -1123,51 +1304,73 @@ def generate_level(mission_data, seed_val=100):
     rooftops = []
     anchors = []
     cartridges = []
+    medkits = []
     items = []
     enemies = []
 
-    # 1. First safe starting rooftop
+    # 1. Safe starting rooftop (width 800)
     cur_x = 0
     cur_y = 390
     rooftops.append(Rooftop(cur_x, cur_y, 800))
+    anchors.append(AnchorPoint(cur_x + 200, cur_y - 130, "lamp", base_y=cur_y))
+    anchors.append(AnchorPoint(cur_x + 440, cur_y - 170, "antenna", base_y=cur_y))
+    anchors.append(AnchorPoint(cur_x + 680, cur_y - 180, "crane", base_y=cur_y))
     cur_x += 800
 
-    # 2. Build rooftop chain
+    # 2. Build rooftop chain with dense physical poles every 120-180 px
     while cur_x < length:
         gap = rng.randint(90, 210)
         roof_w = rng.randint(450, 700)
         dy = rng.randint(-50, 50)
         cur_y = max(280, min(420, cur_y + dy))
 
+        # Anchor suspended over the gap
         anchor_x = cur_x + gap * 0.5
-        anchor_y = min(cur_y - 130, 210)
-        kind = rng.choice(["crane", "lamp", "billboard"])
-        anchors.append(AnchorPoint(anchor_x, anchor_y, kind))
+        anchor_y = min(cur_y - 140, 200)
+        gap_kind = rng.choice(["crane", "lamp", "billboard"])
+        anchors.append(AnchorPoint(anchor_x, anchor_y, gap_kind, base_y=cur_y))
 
         cur_x += gap
         rooftop = Rooftop(cur_x, cur_y, roof_w)
         rooftops.append(rooftop)
 
-        anchors.append(AnchorPoint(cur_x + roof_w * 0.5, cur_y - 140, "lamp"))
+        # 3 physical poles on every rooftop: Left, Center landmark, Right
+        anchors.append(AnchorPoint(cur_x + 80, cur_y - 135, rng.choice(["lamp", "antenna"]), base_y=cur_y))
+
+        center_kind = rng.choice(["crane", "water_tower", "spire"])
+        center_h = 175 if center_kind == "crane" else (150 if center_kind == "water_tower" else 165)
+        anchors.append(AnchorPoint(cur_x + roof_w * 0.5, cur_y - center_h, center_kind, base_y=cur_y))
+
+        anchors.append(AnchorPoint(cur_x + roof_w - 80, cur_y - 135, rng.choice(["lamp", "antenna"]), base_y=cur_y))
+
         cur_x += roof_w
 
     # Final giant Extraction Rooftop with safety barrier
     final_w = 1200
     final_roof = Rooftop(cur_x, cur_y, final_w)
     rooftops.append(final_roof)
-    # Tall skyscraper wall at end so player can never fall off the end of the world
     rooftops.append(Rooftop(cur_x + final_w - 40, cur_y - 320, 200, 500))
-    anchors.append(AnchorPoint(cur_x + 500, cur_y - 160, "crane"))
+    anchors.append(AnchorPoint(cur_x + 220, cur_y - 135, "lamp", base_y=cur_y))
+    anchors.append(AnchorPoint(cur_x + 520, cur_y - 175, "crane", base_y=cur_y))
+    anchors.append(AnchorPoint(cur_x + 860, cur_y - 160, "spire", base_y=cur_y))
     cur_x += final_w
 
     # 3. Distribute Fluid Cartridges along roofs
-    cartridge_budget = mission_data.get("cartridge_count", 12)
+    cartridge_budget = mission_data.get("cartridge_count", 14)
     step = len(rooftops) // max(1, cartridge_budget)
     for i in range(1, len(rooftops) - 1, max(1, step)):
         r = rooftops[i]
-        cartridges.append(FluidCartridge(r.x + r.w * 0.5, r.y - 20))
+        cartridges.append(FluidCartridge(r.x + r.w * 0.45, r.y - 20))
 
-    # 4. Place Mission Objective Items
+    # 4. Distribute Medkit Health Pickups (+2 hearts recovery)
+    medkit_budget = mission_data.get("medkit_count", 3)
+    if len(rooftops) > 3:
+        med_step = max(2, len(rooftops) // max(1, medkit_budget))
+        for i in range(2, len(rooftops) - 1, med_step):
+            r = rooftops[i]
+            medkits.append(MedkitPickup(r.x + r.w * 0.78, r.y - 16))
+
+    # 5. Place Mission Objective Items
     target_type = mission_data["target_type"]
     target_count = mission_data["target_count"]
 
@@ -1182,7 +1385,7 @@ def generate_level(mission_data, seed_val=100):
             r = available_roofs[idx]
             items.append(MissionItem(r.x + r.w * 0.5, r.y - 15, target_type))
 
-    # 5. Populate Enemies
+    # 6. Populate Enemies
     thug_count = mission_data["thugs"]
     thug_step = len(rooftops) // max(1, thug_count)
     for i in range(1, len(rooftops) - 2, max(1, thug_step)):
@@ -1200,7 +1403,7 @@ def generate_level(mission_data, seed_val=100):
     if mission_data.get("hunter", False):
         enemies.append(HunterDrone(0))
 
-    return rooftops, anchors, cartridges, items, enemies
+    return rooftops, anchors, cartridges, medkits, items, enemies
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1241,6 +1444,7 @@ class Game:
         self.rooftops = []
         self.anchors = []
         self.cartridges = []
+        self.medkits = []
         self.items = []
         self.enemies = []
 
@@ -1270,6 +1474,7 @@ class Game:
         self.assets.load("title_art", "title_art.png", max_w=CANVAS_WIDTH, max_h=CANVAS_HEIGHT)
         self.assets.load("rooftop_tile", "rooftop_tile.png")
         self.assets.load("icon_fluid", "icon_fluid.png")
+        self.assets.load("icon_medkit", "icon_medkit.png")
         self.assets.load("icon_chip", "icon_chip.png")
         self.assets.load("icon_bomb", "icon_bomb.png")
         self.assets.load("icon_civilian", "icon_civilian.png")
@@ -1282,6 +1487,7 @@ class Game:
         self.canvas.bind("<Motion>", self.on_mouse_move)
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_press)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_release)
+        self.canvas.bind("<ButtonPress-3>", self.on_right_click)
 
     def cancel_loop(self):
         """Cancels scheduled timer strictly to prevent double game loops."""
@@ -1374,6 +1580,11 @@ class Game:
         if self.state == "PLAYING":
             self.player.release_swing()
 
+    def on_right_click(self, event):
+        """Right Click triggers direct combat attack / web-strike."""
+        if self.state == "PLAYING":
+            self.perform_attack()
+
     def on_key_press(self, event):
         k = event.keysym.lower()
         self.keys[k] = True
@@ -1397,6 +1608,9 @@ class Game:
         elif k == "f":
             if self.state == "PLAYING":
                 self.perform_web_shot()
+        elif k in ("c", "v", "q"):
+            if self.state == "PLAYING":
+                self.perform_attack()
         elif k == "e":
             if self.state == "PLAYING":
                 self.player.crouch_hold = True
@@ -1443,6 +1657,125 @@ class Game:
             self.combo = min(8, self.combo + 1)
             self.particles.emit(hit_enemy.x, hit_enemy.y, count=12, color=COLOR_WHITE, speed=3.0)
 
+    def perform_attack(self):
+        """
+        Executes Spider-Man's combat attack:
+        - Within 95px: Acrobatic punch / kick melee combo that stuns thugs and smashes drones.
+        - Between 95px and 280px: Web-Strike Zip Attack that pulls Spider-Man to the enemy with a flying strike!
+        - Air / whiff: Acrobatic strike swoosh.
+        """
+        self.player.web_fluid = MAX_FLUID
+
+        # Find closest active enemy in front or near player
+        best_target = None
+        best_dist = 999999
+        is_melee = False
+
+        for e in self.enemies:
+            if not e.active:
+                continue
+            dx = (e.x - self.player.x) * self.player.facing
+            dy = abs(e.y - self.player.y)
+            dist = math.hypot(e.x - self.player.x, e.y - self.player.y)
+
+            # Melee check: close in 360 radius or in front
+            if dist <= 95 or (0 <= dx <= 90 and dy <= 50):
+                if dist < best_dist:
+                    best_dist = dist
+                    best_target = e
+                    is_melee = True
+            elif 0 < dx <= 280 and dy <= 120 and not is_melee:
+                if dist < best_dist:
+                    best_dist = dist
+                    best_target = e
+
+        if best_target:
+            if is_melee:
+                # ── MELEE COMBO STRIKE ──
+                attack_type = random.choice(["punch", "kick"])
+                self.player.pose = attack_type
+                self.player.attack_type = attack_type
+                self.player.attack_timer = 10
+                self.player.vx = 4.0 * self.player.facing
+
+                # Comic sound effects
+                words = ["POW!", "WHAM!", "KAPOW!", "SMACK!"]
+                word = random.choice(words)
+
+                if isinstance(best_target, StreetThug):
+                    best_target.stun_timer = STUN_DURATION_TICKS + 40
+                    best_target.x += 35 * self.player.facing
+                    self.popups.add(best_target.x, best_target.y - 25, word, COLOR_YELLOW)
+                elif isinstance(best_target, SentryDrone):
+                    best_target.stun()
+                    best_target.lock_timer = 0
+                    best_target.laser_firing = False
+                    best_target.cooldown = 70
+                    self.popups.add(best_target.x, best_target.y - 25, "CRUNCH!", COLOR_RED)
+                elif isinstance(best_target, GoblinBomber):
+                    best_target.stun()
+                    self.popups.add(best_target.x, best_target.y - 25, "BAM!", COLOR_YELLOW)
+                elif isinstance(best_target, HunterDrone):
+                    best_target.x -= 45
+                    self.popups.add(best_target.x, best_target.y - 25, "DEFLECT!", COLOR_LIGHT_BLUE)
+
+                self.score += SCORE_STOMP * self.combo
+                self.combo = min(8, self.combo + 1)
+                self.screen_shake = 6
+                self.particles.emit(best_target.x, best_target.y, count=16, color=COLOR_YELLOW, speed=4.5)
+                self.particles.emit(best_target.x, best_target.y, count=8, color=COLOR_RED, speed=3.0)
+
+            else:
+                # ── WEB-STRIKE ZIP ATTACK ──
+                self.player.pose = "kick"
+                self.player.attack_type = "kick"
+                self.player.attack_timer = 12
+                # Zip web particle line from player to enemy
+                steps = 10
+                for s in range(steps):
+                    frac = s / float(steps)
+                    zx = self.player.x + (best_target.x - self.player.x) * frac
+                    zy = self.player.y + (best_target.y - self.player.y) * frac
+                    self.particles.emit(zx, zy, count=2, color=COLOR_WHITE, speed=1.5)
+
+                # Zip player directly to target with flying kick
+                self.player.x = best_target.x - (28 * self.player.facing)
+                self.player.y = best_target.y
+                self.player.vx = 5.0 * self.player.facing
+                self.player.vy = -3.0
+
+                # Stun / knock back target
+                if isinstance(best_target, StreetThug):
+                    best_target.stun_timer = STUN_DURATION_TICKS + 50
+                    best_target.x += 40 * self.player.facing
+                    self.popups.add(best_target.x, best_target.y - 25, "ZIP-STRIKE!", COLOR_YELLOW)
+                elif isinstance(best_target, SentryDrone):
+                    best_target.stun()
+                    best_target.lock_timer = 0
+                    best_target.laser_firing = False
+                    best_target.cooldown = 70
+                    self.popups.add(best_target.x, best_target.y - 25, "ZIP-KICK!", COLOR_YELLOW)
+                elif isinstance(best_target, GoblinBomber):
+                    best_target.stun()
+                    self.popups.add(best_target.x, best_target.y - 25, "WHACK!", COLOR_YELLOW)
+                elif isinstance(best_target, HunterDrone):
+                    best_target.x -= 50
+                    self.popups.add(best_target.x, best_target.y - 25, "INTERCEPT!", COLOR_YELLOW)
+
+                self.score += (SCORE_STOMP + SCORE_STUN) * self.combo
+                self.combo = min(8, self.combo + 1)
+                self.screen_shake = 7
+                self.particles.emit(best_target.x, best_target.y, count=20, color=COLOR_YELLOW, speed=5.0)
+
+        else:
+            # Whiff / Air jab
+            attack_type = random.choice(["punch", "kick"])
+            self.player.pose = attack_type
+            self.player.attack_type = attack_type
+            self.player.attack_timer = 8
+            self.popups.add(self.player.x + 25 * self.player.facing, self.player.y - 15, "SWOOSH!", COLOR_LIGHT_BLUE)
+            self.particles.emit(self.player.x + 20 * self.player.facing, self.player.y, count=6, color=COLOR_LIGHT_BLUE, speed=2.5)
+
     # ═══════════════════════════════════════════════════════════════════════════
     # GAME LOOP (FIXED-STEP @ 50 FPS)
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1476,6 +1809,17 @@ class Game:
                 self.score += FLUID_PICKUP_BONUS * self.combo
                 self.popups.add(c.x, c.y - 20, "+50 BONUS!", COLOR_LIGHT_BLUE)
                 self.particles.emit(c.x, c.y, count=12, color=COLOR_LIGHT_BLUE, speed=3.0)
+
+        # Medkit Health Pickups (+2 hearts recovery)
+        for m in self.medkits:
+            if not m.collected and math.hypot(self.player.x - m.x, self.player.y - m.y) < 32:
+                m.collected = True
+                healed = min(2, MAX_HEARTS - self.player.hearts)
+                self.player.hearts = min(MAX_HEARTS, self.player.hearts + 2)
+                self.score += 25 * self.combo
+                heal_text = f"+{healed} HEARTS!" if healed > 0 else "+25 BONUS!"
+                self.popups.add(m.x, m.y - 20, heal_text, "#4ADE80")
+                self.particles.emit(m.x, m.y, count=16, color="#4ADE80", speed=3.5)
 
         # 4. Interactive Mission Objectives (Hold E)
         for item in self.items:
@@ -1560,11 +1904,12 @@ class Game:
             elif isinstance(e, SentryDrone):
                 if e.lock_timer > 12 and not e.is_stunned():
                     spider_sense_alert = True
-                    danger_coords.append((e.x, e.y))
+                    danger_coords.append((e.target_px, e.target_py))
                 if e.laser_firing:
-                    laser_dist = math.hypot(self.player.x - e.x, self.player.y - e.y)
-                    target_dist = math.hypot(e.target_px - e.x, e.target_py - e.y)
-                    if abs(laser_dist - target_dist) < 35:
+                    # Directional laser beam collision using perpendicular distance to line segment
+                    dist_to_beam = point_to_segment_dist(self.player.x, self.player.y,
+                                                         e.x, e.y, e.target_px, e.target_py)
+                    if dist_to_beam < 18.0:
                         if self.player.take_damage(1):
                             self.popups.add(self.player.x, self.player.y - 20, "ZAP!", COLOR_RED)
                             self.screen_shake = 8
@@ -1674,6 +2019,11 @@ class Game:
         icon_fluid = self.assets.get("icon_fluid")
         for c in self.cartridges:
             c.draw(self.canvas, self.cam_x - ox, icon_fluid)
+
+        # Draw Medkits (+2 hearts recovery)
+        icon_medkit = self.assets.get("icon_medkit")
+        for m in self.medkits:
+            m.draw(self.canvas, self.cam_x - ox, icon_medkit)
 
         # Draw Mission Items
         icon_civilian = self.assets.get("icon_civilian")
@@ -1814,6 +2164,11 @@ class Game:
                              fill=COLOR_RED, outline=COLOR_YELLOW, width=2)
             self.canvas.create_text(128, CANVAS_HEIGHT - 38, text=f"HOLD [E]: {action_verb}",
                                     font=get_comic_font(13, "bold"), fill=COLOR_WHITE)
+        else:
+            draw_slanted_box(self.canvas, 16, CANVAS_HEIGHT - 48, 230, CANVAS_HEIGHT - 16, slant=10,
+                             fill=COLOR_NAVY, outline=COLOR_BLUE, width=1.5)
+            self.canvas.create_text(123, CANVAS_HEIGHT - 32, text="[R-CLICK / C]: ATTACK / ZIP",
+                                    font=get_comic_font(10, "bold"), fill=COLOR_YELLOW)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # SCREENS & MENUS (100% CANVAS DRAWN & CENTERED AUTO-SCALED TITLE ART)
@@ -1877,12 +2232,12 @@ class Game:
         self.canvas.create_text(CANVAS_WIDTH // 4 + 20, 130, text="HERO CONTROLS",
                                 font=get_comic_font(18, "bold"), fill=COLOR_YELLOW)
         ctrls = [
-            ("A / D or Left / Right", "Run across rooftops"),
-            ("W / Up / Space", "Jump (Double Jump allowed)"),
-            ("Hold Left Mouse / Shift", "Web-Swing from ANYWHERE!"),
-            ("Hold W while swinging", "Pump upward & climb higher"),
-            ("F", "Web-Shot (Stuns enemies for 2.5s)"),
-            ("Hold E", "Interact (Rescue civilian / Defuse bomb)"),
+            ("A / D or Left / Right", "Run & pump swing speed"),
+            ("W / Up / Space", "Jump / Double Jump / Reel-in"),
+            ("Hold Left Mouse / Shift", "Authentic Pendulum Web-Swing"),
+            ("Right Mouse / C", "Attack! Melee Combo & Web-Strike"),
+            ("F", "Web-Shot (Stun enemies for 2.5s)"),
+            ("Hold E", "Interact (Rescue / Defuse / Crouch)"),
             ("P / Space", "Pause patrol"),
             ("R", "Restart current mission"),
             ("Esc", "Return to main menu")
@@ -1898,15 +2253,16 @@ class Game:
         self.canvas.create_text(CANVAS_WIDTH * 0.75 - 20, 130, text="CORE MECHANICS",
                                 font=get_comic_font(18, "bold"), fill=COLOR_YELLOW)
         mechanics = [
-            "• UNLIMITED FLUID: Swing freely & shoot unlimited webs!",
-            "  Collect canisters for +50 score bonuses.",
-            "• SWING ANYWHERE: Click Left Mouse to shoot a web",
-            "  line to the sky or buildings and swing to great heights!",
-            "• WEB RESCUE: Falling never hurts you! A safety web",
-            "  catapults Spider-Man straight back onto the roof.",
-            "• HEAD STOMP: Fall onto thugs from above to knock",
-            "  them out instantly for +25 pts and bounce up.",
-            "• SPIDER-SENSE: Red warning rings show incoming hits."
+            "• COMBAT & ZIP-STRIKE: Right Click punches/kicks nearby",
+            "  foes or zips to distant enemies with flying strikes!",
+            "• MEDKITS: Collect green first-aid crates (+2 hearts).",
+            "• REAL SWING POLES: Swing from real rooftop streetlights,",
+            "  derrick cranes, radio antennas, and water towers!",
+            "• PENDULUM SWING: Swoop down fast, climb to high crests,",
+            "  and hold W/Space to reel in and gain altitude!",
+            "• WEB RESCUE: Falling never hurts! A safety web bounces",
+            "  Spider-Man straight back onto the rooftop.",
+            "• SPIDER-SENSE: Red warning alerts show incoming attacks."
         ]
         for idx, line in enumerate(mechanics):
             cy = 170 + idx * 26
@@ -2081,7 +2437,7 @@ class Game:
         self.mission_start_time = time.time()
         self.time_remaining = m.get("time_limit", 0)
 
-        self.rooftops, self.anchors, self.cartridges, self.items, self.enemies = generate_level(m, seed_val=100 + mission_idx * 17)
+        self.rooftops, self.anchors, self.cartridges, self.medkits, self.items, self.enemies = generate_level(m, seed_val=100 + mission_idx * 17)
         self.show_screen("BRIEFING")
 
 
